@@ -296,9 +296,9 @@ defmodule Core.Medications do
     |> join(:inner, [innm_dosage], ing in MedicationIngredient, ing.medication_child_id == ^innm_dosage_id)
     |> join(:inner, [innm_dosage, ing], med in Medication, ing.parent_id == med.id)
     |> where([innm_dosage, ing, med], ing.is_primary == true)
-    |> where([innm_dosage, ...], innm_dosage.id == ^innm_dosage_id)
-    |> where([innm_dosage, ...], innm_dosage.type == ^INNMDosage.type())
-    |> where([innm_dosage, ...], innm_dosage.is_active == true)
+    |> where([innm_dosage], innm_dosage.id == ^innm_dosage_id)
+    |> where([innm_dosage], innm_dosage.type == ^INNMDosage.type())
+    |> where([innm_dosage], innm_dosage.is_active == true)
     |> where([..., med], med.is_active == true)
     |> select([innm_dosage, ing, med], %{
       id: innm_dosage.id,

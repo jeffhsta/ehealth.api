@@ -279,15 +279,15 @@ defmodule Core.Medications do
 
   def maybe_validate_medication_program_for_medication_request_request(query, program_id) do
     query
-    |> join(:inner, [innm_dosage, ing, med], mp in MedicalProgram, mp.id == ^program_id)
+    |> join(:inner, [...], mp in MedicalProgram, mp.id == ^program_id)
     |> join(
       :inner,
       [innm_dosage, ing, med, mp],
       pm in ProgramMedication,
       mp.id == pm.medical_program_id and pm.medication_id == med.id
     )
-    |> where([innm_dosage, ing, med, mp, pm], pm.is_active == true)
-    |> where([innm_dosage, ing, med, mp, pm], pm.medication_request_allowed == true)
+    |> where([..., pm], pm.is_active == true)
+    |> where([..., pm], pm.medication_request_allowed == true)
     |> select_merge([innm_dosage, ing, med, mp, pm], %{medical_program_id: mp.id, medical_program_name: mp.name})
   end
 
@@ -296,10 +296,10 @@ defmodule Core.Medications do
     |> join(:inner, [innm_dosage], ing in MedicationIngredient, ing.medication_child_id == ^innm_dosage_id)
     |> join(:inner, [innm_dosage, ing], med in Medication, ing.parent_id == med.id)
     |> where([innm_dosage, ing, med], ing.is_primary == true)
-    |> where([innm_dosage, ing, med], innm_dosage.id == ^innm_dosage_id)
-    |> where([innm_dosage, ing, med], innm_dosage.type == ^INNMDosage.type())
-    |> where([innm_dosage, ing, med], innm_dosage.is_active == true)
-    |> where([innm_dosage, ing, med], med.is_active == true)
+    |> where([innm_dosage, ...], innm_dosage.id == ^innm_dosage_id)
+    |> where([innm_dosage, ...], innm_dosage.type == ^INNMDosage.type())
+    |> where([innm_dosage, ...], innm_dosage.is_active == true)
+    |> where([..., med], med.is_active == true)
     |> select([innm_dosage, ing, med], %{
       id: innm_dosage.id,
       medication_id: med.id,

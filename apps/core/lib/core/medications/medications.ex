@@ -63,7 +63,29 @@ defmodule Core.Medications do
 
   defp search_drugs(%{valid?: true, changes: attrs}, params) do
     page_number = Map.get(params, "page", 1)
+
+    page_number =
+      if is_binary(page_number) do
+        case Integer.parse() do
+          {int, _} -> if int > 0, do: int, else: 1
+          :error -> 1
+        end
+      else
+        if page_number > 0, do: page_number, else: 1
+      end
+
     page_size = Map.get(params, "page_size", 50)
+
+    page_size =
+      if is_binary(page_size) do
+        case Integer.parse() do
+          {int, _} -> if int > 0, do: int, else: 50
+          :error -> 50
+        end
+      else
+        if page_size > 0, do: page_size, else: 50
+      end
+
     offset = page_size * (page_number - 1)
 
     # get primary INNMDosage ingredients

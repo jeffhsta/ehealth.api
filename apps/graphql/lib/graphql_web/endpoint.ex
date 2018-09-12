@@ -1,5 +1,5 @@
-defmodule AdminWeb.Endpoint do
-  use Phoenix.Endpoint, otp_app: :admin
+defmodule GraphQLWeb.Endpoint do
+  use Phoenix.Endpoint, otp_app: :graphql
 
   plug(Plug.RequestId)
   plug(Plug.LoggerJSON, level: Logger.level())
@@ -14,7 +14,7 @@ defmodule AdminWeb.Endpoint do
   plug Plug.MethodOverride
   plug Plug.Head
 
-  plug AdminWeb.Router
+  plug GraphQLWeb.Router
 
   @doc """
   Callback invoked for dynamically configuring the endpoint.

@@ -17,11 +17,11 @@ defmodule GraphQL.Mixfile do
       compilers: [:phoenix] ++ Mix.compilers(),
       build_embedded: Mix.env() == :prod,
       start_permanent: Mix.env() == :prod,
-      compilers: [:phoenix] ++ Mix.compilers,
-      start_permanent: Mix.env == :prod,
+      compilers: [:phoenix] ++ Mix.compilers(),
+      start_permanent: Mix.env() == :prod,
       deps: deps(),
       preferred_cli_env: [coveralls: :test],
-      test_coverage: [tool: ExCoveralls],
+      test_coverage: [tool: ExCoveralls]
     ]
   end
 
@@ -44,13 +44,13 @@ defmodule GraphQL.Mixfile do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
+      {:absinthe, "~> 1.4"},
+      {:absinthe_plug, "~> 1.4"},
       {:cowboy, "~> 1.0"},
+      {:jason, "~> 1.1"},
       {:ecto_logger_json, git: "https://github.com/edenlabllc/ecto_logger_json.git", branch: "query_params"},
       {:plug_logger_json, "~> 0.5"},
-      {:phoenix, "~> 1.3.4"},
-      {:jason, "~> 1.1"},
-      {:absinthe, "~> 1.4"},
-      {:absinthe_plug, "~> 1.4"}
+      {:phoenix, "~> 1.3.4"}
     ]
   end
 end

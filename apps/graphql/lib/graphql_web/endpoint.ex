@@ -11,6 +11,12 @@ defmodule GraphQLWeb.Endpoint do
     json_decoder: Jason
   )
 
+  plug(
+    Absinthe.Plug,
+    schema: GraphQLWeb.Schema,
+    json_codec: Jason
+  )
+
   @doc """
   Callback invoked for dynamically configuring the endpoint.
 

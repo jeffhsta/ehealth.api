@@ -48,6 +48,9 @@ defmodule GraphQL.Mixfile do
       {:ecto_logger_json, git: "https://github.com/edenlabllc/ecto_logger_json.git", branch: "query_params"},
       {:plug_logger_json, "~> 0.5"},
       {:phoenix, "~> 1.3.4"},
+      {:jason, "~> 1.1"},
+      {:absinthe, "~> 1.4"},
+      {:absinthe_plug, "~> 1.4"}
     ]
   end
 end

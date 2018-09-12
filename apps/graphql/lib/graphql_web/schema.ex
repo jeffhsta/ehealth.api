@@ -3,12 +3,12 @@ defmodule GraphQLWeb.Schema do
 
   import_types(GraphQLWeb.Schema.PersonTypes)
 
-  alias GraphQLWeb.Resolvers
+  alias GraphQLWeb.Resolvers.{Person}
 
   query do
     @desc "Get all persons"
     field :persons, list_of(:person) do
-      resolve(&Resolvers.Person.list_persons/3)
+      resolve(&Person.list_persons/3)
     end
   end
 end

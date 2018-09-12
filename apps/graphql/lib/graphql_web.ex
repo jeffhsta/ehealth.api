@@ -17,35 +17,6 @@ defmodule GraphQLWeb do
   and import those modules here.
   """
 
-  def controller do
-    quote do
-      use Phoenix.Controller, namespace: GraphQLWeb
-      import Plug.Conn
-      import GraphQLWeb.Router.Helpers
-    end
-  end
-
-  def view do
-    quote do
-      use Phoenix.View,
-        root: "lib/web/templates",
-        namespace: GraphQLWeb
-
-      # Import convenience functions from controllers
-      import Phoenix.Controller, only: [get_flash: 2, view_module: 1]
-
-      import GraphQLWeb.Router.Helpers
-    end
-  end
-
-  def router do
-    quote do
-      use Phoenix.Router
-      import Plug.Conn
-      import Phoenix.Controller
-    end
-  end
-
   @doc """
   When used, dispatch to the appropriate controller/view/etc.
   """

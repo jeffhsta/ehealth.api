@@ -11,11 +11,6 @@ defmodule GraphQLWeb.Endpoint do
     json_decoder: Jason
   )
 
-  plug(Plug.MethodOverride)
-  plug(Plug.Head)
-
-  plug(GraphQLWeb.Router)
-
   @doc """
   Callback invoked for dynamically configuring the endpoint.
 

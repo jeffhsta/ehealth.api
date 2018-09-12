@@ -8,7 +8,7 @@ config :graphql,
 config :graphql, GraphQLWeb.Endpoint,
   url: [host: "localhost"],
   secret_key_base: "CYmgC8ImSRDRzR8UuogkPi3LY9xnvdta6S4pJmKDSQPnqRF9p5PNNS11eE7a2Uc5",
-  render_errors: [view: GraphQLWeb.ErrorView, accepts: ~w(json)]
+  render_errors: [view: EView.Views.PhoenixError, accepts: ~w(json)]
 
 # Configures Elixir's Logger
 config :logger, :console,

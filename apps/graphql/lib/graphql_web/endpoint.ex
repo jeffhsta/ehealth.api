@@ -15,7 +15,7 @@ defmodule GraphQLWeb.Endpoint do
     Absinthe.Plug,
     schema: GraphQLWeb.Schema,
     json_codec: Jason,
-    context: %{scopes: ["person:read", "person:list"]}
+    context: %{scopes: ~w(person:read person:list legal_entity:list)}
   )
 
   @doc """

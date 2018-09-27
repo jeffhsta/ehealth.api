@@ -14,19 +14,35 @@ defmodule GraphQLWeb.ConnCase do
   """
 
   use ExUnit.CaseTemplate
+  alias Core.Repo
+  alias Core.PRMRepo
+  alias Core.EventManagerRepo
+  alias Ecto.Adapters.SQL.Sandbox
+  alias Phoenix.ConnTest
 
   using do
     quote do
       # Import conveniences for testing with connections
       use Phoenix.ConnTest
-      import GraphQLWeb.Router.Helpers
 
       # The default endpoint for testing
       @endpoint GraphQLWeb.Endpoint
+
+      def graphql_path, do: "/api"
     end
   end
 
-  setup _tags do
-    {:ok, conn: Phoenix.ConnTest.build_conn()}
+  setup tags do
+    :ok = Sandbox.checkout(Repo)
+    :ok = Sandbox.checkout(PRMRepo)
+    :ok = Sandbox.checkout(EventManagerRepo)
+
+    unless tags[:async] do
+      Sandbox.mode(Repo, {:shared, self()})
+      Sandbox.mode(PRMRepo, {:shared, self()})
+      Sandbox.mode(EventManagerRepo, {:shared, self()})
+    end
+
+    {:ok, conn: ConnTest.build_conn()}
   end
 end

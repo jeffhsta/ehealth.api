@@ -44,6 +44,7 @@ defmodule GraphQL.Mixfile do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
+      {:core, in_umbrella: true},
       {:absinthe, "~> 1.4"},
       {:absinthe_plug, "~> 1.4"},
       {:cowboy, "~> 1.0"},

@@ -655,9 +655,12 @@ defmodule Core.DeclarationRequests.API.V1.Creator do
   def determine_auth_method_for_mpi(%Changeset{valid?: false} = changeset, _, _), do: changeset
 
   def determine_auth_method_for_mpi(changeset, @channel_cabinet, person_id) do
+    chanseset_data = get_field(changeset, :data)
+    birth_date = chanseset_data["person"]["birth_date"]
+
     changeset
     |> put_change(:authentication_method_current, %{"type" => @auth_na})
-    |> put_change(:mpi_id, person_id)
+    |> put_mpi_id(person_id, birth_date)
   end
 
   def determine_auth_method_for_mpi(changeset, _, _) do
@@ -691,11 +694,26 @@ defmodule Core.DeclarationRequests.API.V1.Creator do
 
     changeset
     |> put_change(:authentication_method_current, authentication_method_current)
-    |> put_change(:mpi_id, person["id"])
+    |> put_mpi_id(person["id"], person["birth_date"])
   end
 
   def do_determine_auth_method_for_mpi({:error, reason}, changeset),
     do: add_error(changeset, :authentication_method_current, format_error_response("MPI", reason))
+
+  defp put_mpi_id(changeset, person_id, person_birth_date) do
+    if child?(person_birth_date) do
+      changeset
+    else
+      put_change(changeset, :mpi_id, person_id)
+    end
+  end
+
+  defp child?(birth_date) do
+    case Date.from_iso8601(birth_date) do
+      {:ok, birth_date} -> Timex.diff(Timex.now(), birth_date, :years) < 14
+      _ -> false
+    end
+  end
 
   def generate_printout_form(%Changeset{valid?: false} = changeset, _), do: changeset
 

@@ -1,6 +1,10 @@
 defmodule GraphQLWeb.Endpoint do
   use Phoenix.Endpoint, otp_app: :graphql
 
+  alias GraphQLWeb.Plugs.Context
+
+  @scope_header "x-consumer-scope"
+
   plug(Plug.RequestId)
   plug(Plug.LoggerJSON, level: Logger.level())
 
@@ -11,11 +15,12 @@ defmodule GraphQLWeb.Endpoint do
     json_decoder: Jason
   )
 
+  plug(Context, scope_header: @scope_header)
+
   plug(
     Absinthe.Plug,
     schema: GraphQLWeb.Schema,
-    json_codec: Jason,
-    context: %{scopes: ~w(person:read person:list legal_entity:list)}
+    json_codec: Jason
   )
 
   @doc """
@@ -32,4 +37,6 @@ defmodule GraphQLWeb.Endpoint do
       {:ok, config}
     end
   end
+
+  def scope_header, do: @scope_header
 end

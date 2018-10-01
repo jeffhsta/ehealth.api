@@ -1,4 +1,8 @@
 defmodule GraphQL.Application do
+  @moduledoc """
+  This application provides GraphQL API for eHealth services.
+  """
+
   use Application
 
   # See https://hexdocs.pm/elixir/Application.html

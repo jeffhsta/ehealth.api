@@ -1,4 +1,6 @@
 defmodule GraphQLWeb.Resolvers.Person do
+  @moduledoc false
+
   alias GraphQL.Person
 
   def list_persons(_parent, _args, _resolution) do

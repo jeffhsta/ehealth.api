@@ -1,6 +1,12 @@
 defmodule GraphQLWeb.PersonResolverTest do
   use GraphQLWeb.ConnCase, async: true
 
+  setup context do
+    conn = put_scope(context.conn, "person:read person:list")
+
+    {:ok, %{conn: conn}}
+  end
+
   describe "persons list" do
     test "success", %{conn: conn} do
       query = """
@@ -14,7 +20,7 @@ defmodule GraphQLWeb.PersonResolverTest do
 
       data =
         conn
-        |> post(graphql_path(), %{query: query})
+        |> post_query(query)
         |> json_response(200)
         |> Map.get("data")
 
@@ -40,7 +46,7 @@ defmodule GraphQLWeb.PersonResolverTest do
 
       resp =
         conn
-        |> post(graphql_path(), %{query: query})
+        |> post_query(query)
         |> json_response(200)
     end
   end

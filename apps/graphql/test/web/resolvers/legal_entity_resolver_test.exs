@@ -2,6 +2,12 @@ defmodule GraphQLWeb.LegalEntityResolverTest do
   use GraphQLWeb.ConnCase, async: true
   import Core.Factories
 
+  setup context do
+    conn = put_scope(context.conn, "legal_entity:read legal_entity:list")
+
+    {:ok, %{conn: conn}}
+  end
+
   describe "list" do
     test "success without params", %{conn: conn} do
       insert(:prm, :legal_entity)
@@ -18,7 +24,7 @@ defmodule GraphQLWeb.LegalEntityResolverTest do
 
       data =
         conn
-        |> post(graphql_path(), %{query: query})
+        |> post_query(query)
         |> json_response(200)
         |> Map.get("data")
 
@@ -47,7 +53,7 @@ defmodule GraphQLWeb.LegalEntityResolverTest do
 
       data =
         conn
-        |> post(graphql_path(), %{query: query})
+        |> post_query(query)
         |> json_response(200)
         |> Map.get("data")
 
@@ -57,27 +63,27 @@ defmodule GraphQLWeb.LegalEntityResolverTest do
     end
   end
 
-    describe "get by id" do
-      test "success", %{conn: conn} do
-        insert(:prm, :legal_entity)
-        legal_entity = insert(:prm, :legal_entity)
+  describe "get by id" do
+    test "success", %{conn: conn} do
+      insert(:prm, :legal_entity)
+      legal_entity = insert(:prm, :legal_entity)
 
-        query = """
-          {
-            legal_entity(id: "#{legal_entity.id}") {
-              id
-              public_name
-            }
+      query = """
+        {
+          legal_entity(id: "#{legal_entity.id}") {
+            id
+            public_name
           }
-        """
+        }
+      """
 
-        resp =
-          conn
-          |> post(graphql_path(), %{query: query})
-          |> json_response(200)
-          |> get_in(~w(data legal_entity))
+      resp =
+        conn
+        |> post_query(query)
+        |> json_response(200)
+        |> get_in(~w(data legal_entity))
 
-        assert legal_entity.public_name == resp["public_name"]
-      end
+      assert legal_entity.public_name == resp["public_name"]
     end
+  end
 end

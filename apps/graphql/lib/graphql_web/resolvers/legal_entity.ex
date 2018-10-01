@@ -1,4 +1,6 @@
 defmodule GraphQLWeb.Resolvers.LegalEntity do
+  @moduledoc false
+
   alias Core.LegalEntities
 
   def list_legal_entities(_parent, args, _resolution) do

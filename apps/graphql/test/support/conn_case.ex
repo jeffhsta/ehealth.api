@@ -28,7 +28,15 @@ defmodule GraphQLWeb.ConnCase do
       # The default endpoint for testing
       @endpoint GraphQLWeb.Endpoint
 
-      def graphql_path, do: "/api"
+      @graphql_path "/graphql"
+
+      def put_scope(conn, scope) do
+        put_req_header(conn, @endpoint.scope_header(), scope)
+      end
+
+      def post_query(conn, query, variables \\ %{}) do
+        post(conn, @graphql_path, %{query: query, variables: variables})
+      end
     end
   end
 

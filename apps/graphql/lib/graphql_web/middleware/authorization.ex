@@ -3,6 +3,22 @@ defmodule GraphQLWeb.Middleware.Authorization do
   This middleware performs scope-based authorization on the fields.
   """
 
+  defmacro __using__(opts \\ []) do
+    meta_key = Keyword.get(opts, :meta_key, :scope)
+    context_key = Keyword.get(opts, :context_key, :scope)
+
+    quote do
+      def middleware(middleware, %{__private__: [meta: [{unquote(meta_key), _}]]} = field, object) do
+        opts = [meta_key: unquote(meta_key), context_key: unquote(context_key)]
+        [{unquote(__MODULE__), opts} | super(middleware, field, object)]
+      end
+
+      def middleware(middleware, field, object), do: super(middleware, field, object)
+
+      defoverridable middleware: 3
+    end
+  end
+
   @behaviour Absinthe.Middleware
 
   @forbidden_error_message "Your scope does not allow to access this resource"

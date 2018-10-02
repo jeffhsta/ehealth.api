@@ -49,7 +49,6 @@ defmodule EHealth.Integration.DeclarationRequestCreateTest do
       {:ok, %{conn: conn}}
     end
 
-    @tag :wip
     test "declaration request `mpi_id` is not saved for children", %{conn: conn} do
       gen_sequence_number()
       template()

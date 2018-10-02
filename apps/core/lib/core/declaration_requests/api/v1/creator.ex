@@ -704,15 +704,15 @@ defmodule Core.DeclarationRequests.API.V1.Creator do
 
   defp put_mpi_id(changeset, person_id, person_birth_date) do
     if passport_age?(person_birth_date) do
-      changeset
-    else
       put_change(changeset, :mpi_id, person_id)
+    else
+      changeset
     end
   end
 
   defp passport_age?(birth_date) do
     case Date.from_iso8601(birth_date) do
-      {:ok, birth_date} -> Timex.diff(Timex.now(), birth_date, :years) < @years_to_have_passport
+      {:ok, birth_date} -> Timex.diff(Timex.now(), birth_date, :years) >= @years_to_have_passport
       _ -> false
     end
   end

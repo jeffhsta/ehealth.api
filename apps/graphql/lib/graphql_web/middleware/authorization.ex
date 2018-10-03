@@ -3,6 +3,12 @@ defmodule GraphQLWeb.Middleware.Authorization do
   This middleware performs scope-based authorization on the fields.
   """
 
+  @behaviour Absinthe.Middleware
+
+  alias Absinthe.{Resolution, Type}
+
+  @forbidden_error_message "Your scope does not allow to access this resource"
+
   defmacro __using__(opts \\ []) do
     meta_key = Keyword.get(opts, :meta_key, :scope)
     context_key = Keyword.get(opts, :context_key, :scope)
@@ -18,12 +24,6 @@ defmodule GraphQLWeb.Middleware.Authorization do
       defoverridable middleware: 3
     end
   end
-
-  @behaviour Absinthe.Middleware
-
-  @forbidden_error_message "Your scope does not allow to access this resource"
-
-  alias Absinthe.{Resolution, Type}
 
   def call(%{state: :unresolved} = resolution, opts) do
     [meta_key: meta_key, context_key: context_key] = opts

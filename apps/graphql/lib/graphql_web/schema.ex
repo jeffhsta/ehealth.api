@@ -1,15 +1,15 @@
 defmodule GraphQLWeb.Schema do
   @moduledoc false
 
-  alias Core.LegalEntities.LegalEntity
-  alias Core.Persons.Person
-  alias GraphQLWeb.Middleware
-
   use Absinthe.Schema
   use Absinthe.Relay.Schema, :modern
-  use Middleware.Authorization
-  use Middleware.ParseIDs
-  use Middleware.DatabaseIDs
+  use GraphQLWeb.Middleware.MapGet
+  use GraphQLWeb.Middleware.Authorization
+  use GraphQLWeb.Middleware.ParseIDs
+  use GraphQLWeb.Middleware.DatabaseIDs
+
+  alias Core.LegalEntities.LegalEntity
+  alias Core.Persons.Person
 
   import_types(GraphQLWeb.Schema.{LegalEntityTypes, PersonTypes})
 

@@ -3,6 +3,10 @@ defmodule GraphQLWeb.Middleware.DatabaseIDs do
   This middleware reassigns internal IDs in objects that are implementing Node interface.
   """
 
+  @behaviour Absinthe.Middleware
+
+  alias Absinthe.Resolution
+
   defmacro __using__(opts \\ []) do
     inner_key = Keyword.get(opts, :inner_key, :id)
     outer_key = Keyword.get(opts, :outer_key, :database_id)
@@ -25,10 +29,6 @@ defmodule GraphQLWeb.Middleware.DatabaseIDs do
       defoverridable middleware: 3
     end
   end
-
-  @behaviour Absinthe.Middleware
-
-  alias Absinthe.Resolution
 
   def call(%{state: :resolved} = resolution, opts) do
     inner_key = Keyword.get(opts, :inner_key)

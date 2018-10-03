@@ -273,7 +273,22 @@ defmodule EHealth.Web.MedicationDispenseControllerTest do
         )
 
       resp = json_response(conn, 422)
-      assert %{"error" => %{"invalid" => [%{"entry" => "$.medical_program_id"}]}} = resp
+
+      assert %{
+               "invalid" => [
+                 %{
+                   "entry" => "$.medical_program_id",
+                   "entry_type" => "json_data_property",
+                   "rules" => [
+                     %{
+                       "description" => "Medical program not found",
+                       "params" => [],
+                       "rule" => "invalid"
+                     }
+                   ]
+                 }
+               ]
+             } = resp["error"]
     end
 
     test "medical program is not active", %{conn: conn} do
@@ -337,6 +352,76 @@ defmodule EHealth.Web.MedicationDispenseControllerTest do
 
       resp = json_response(conn, 409)
       assert %{"error" => %{"type" => "request_conflict", "message" => "Medical program is not active"}} = resp
+    end
+
+    test "medical program in dispense does not match the one in medication request", %{conn: conn} do
+      expect_mpi_get_person()
+
+      %{user_id: user_id, party: party} = insert(:prm, :party_user)
+      legal_entity = insert(:prm, :legal_entity)
+      %{id: employee_id} = insert(:prm, :employee, party: party, legal_entity: legal_entity)
+
+      %{id: division_id} =
+        insert(
+          :prm,
+          :division,
+          is_active: true,
+          legal_entity: legal_entity
+        )
+
+      %{id: innm_dosage_id} = insert_innm_dosage()
+      insert_medication(innm_dosage_id)
+      %{id: medical_program_id} = insert(:prm, :medical_program, is_active: true)
+      %{id: medical_program_id_request} = insert(:prm, :medical_program, is_active: true)
+
+      {medication_request, _} =
+        build_resp(%{
+          legal_entity_id: legal_entity.id,
+          division_id: division_id,
+          employee_id: employee_id,
+          medical_program_id: medical_program_id,
+          medication_id: innm_dosage_id,
+          medication_request_params: %{
+            dispense_valid_from: Date.utc_today() |> Date.add(-1),
+            dispense_valid_to: Date.utc_today() |> Date.add(1)
+          }
+        })
+
+      expect(OPSMock, :get_medication_requests, fn _params, _headers ->
+        {:ok, %{"data" => [medication_request]}}
+      end)
+
+      conn = put_client_id_header(conn, legal_entity.id)
+      conn = Plug.Conn.put_req_header(conn, consumer_id_header(), user_id)
+
+      conn =
+        post(
+          conn,
+          medication_dispense_path(conn, :create),
+          medication_dispense:
+            new_dispense_params(%{
+              "division_id" => division_id,
+              "medical_program_id" => medical_program_id_request
+            })
+        )
+
+      resp = json_response(conn, 422)
+
+      assert %{
+               "invalid" => [
+                 %{
+                   "entry" => "$.medical_program_id",
+                   "entry_type" => "json_data_property",
+                   "rules" => [
+                     %{
+                       "description" => "Medical program in dispense doesn't match the one in medication request",
+                       "params" => [],
+                       "rule" => "invalid"
+                     }
+                   ]
+                 }
+               ]
+             } = resp["error"]
     end
 
     test "invalid medication", %{conn: conn} do
@@ -1164,6 +1249,268 @@ defmodule EHealth.Web.MedicationDispenseControllerTest do
       path = medication_dispense_path(conn, :process, medication_dispense["id"])
       conn = patch(conn, path, %{"payment_id" => "12345"})
       assert json_response(conn, 409)
+    end
+
+    test "invalid params: payment_id is not defined", %{conn: conn} do
+      expect_mpi_get_person()
+
+      %{party: party} = insert(:prm, :party_user)
+      legal_entity = insert(:prm, :legal_entity)
+      %{id: employee_id} = insert(:prm, :employee, party: party, legal_entity: legal_entity)
+      %{id: division_id} = insert(:prm, :division, legal_entity: legal_entity)
+      %{id: innm_dosage_id} = insert_innm_dosage()
+      medication = insert_medication(innm_dosage_id)
+      %{id: medical_program_id} = insert(:prm, :medical_program)
+
+      insert(
+        :prm,
+        :program_medication,
+        medication_id: medication.id,
+        medical_program_id: medical_program_id,
+        reimbursement: build(:reimbursement, reimbursement_amount: 150)
+      )
+
+      payment_id = "12345"
+      payment_amount = 20
+
+      {_, medication_dispense} =
+        build_resp(%{
+          legal_entity_id: legal_entity.id,
+          division_id: division_id,
+          employee_id: employee_id,
+          medical_program_id: medical_program_id,
+          medication_id: innm_dosage_id,
+          medication_request_params: %{
+            dispense_valid_from: Date.utc_today() |> Date.add(-1),
+            dispense_valid_to: Date.utc_today() |> Date.add(1)
+          },
+          medication_dispense_params: %{
+            party_id: party.id,
+            payment_id: payment_id,
+            payment_amount: payment_amount
+          },
+          medication_dispense_details_params: %{
+            medication_id: medication.id,
+            medication: medication,
+            division_id: division_id,
+            medication_qty: 10,
+            sell_price: 18.65,
+            sell_amount: 186.5,
+            discount_amount: 50
+          }
+        })
+
+      expect(OPSMock, :get_medication_dispenses, fn _params, _headers ->
+        {:ok,
+         %{
+           "data" => [medication_dispense],
+           "paging" => %{
+             "page_number" => 1,
+             "page_size" => 50,
+             "total_entries" => 1,
+             "total_pages" => 1
+           }
+         }}
+      end)
+
+      resp =
+        conn
+        |> put_client_id_header(legal_entity.id)
+        |> patch(medication_dispense_path(conn, :process, UUID.generate()), %{
+          "payment_amount" => payment_amount
+        })
+        |> json_response(422)
+
+      assert %{
+               "invalid" => [
+                 %{
+                   "entry" => "$.payment_id",
+                   "entry_type" => "json_data_property",
+                   "rules" => [
+                     %{
+                       "description" => "required property payment_id was not present",
+                       "params" => [],
+                       "rule" => "required"
+                     }
+                   ]
+                 }
+               ]
+             } = resp["error"]
+    end
+
+    test "invalid params: payment_amount is not defined", %{conn: conn} do
+      expect_mpi_get_person()
+
+      %{party: party} = insert(:prm, :party_user)
+      legal_entity = insert(:prm, :legal_entity)
+      %{id: employee_id} = insert(:prm, :employee, party: party, legal_entity: legal_entity)
+      %{id: division_id} = insert(:prm, :division, legal_entity: legal_entity)
+      %{id: innm_dosage_id} = insert_innm_dosage()
+      medication = insert_medication(innm_dosage_id)
+      %{id: medical_program_id} = insert(:prm, :medical_program)
+
+      insert(
+        :prm,
+        :program_medication,
+        medication_id: medication.id,
+        medical_program_id: medical_program_id,
+        reimbursement: build(:reimbursement, reimbursement_amount: 150)
+      )
+
+      payment_id = "12345"
+      payment_amount = 20
+
+      {_, medication_dispense} =
+        build_resp(%{
+          legal_entity_id: legal_entity.id,
+          division_id: division_id,
+          employee_id: employee_id,
+          medical_program_id: medical_program_id,
+          medication_id: innm_dosage_id,
+          medication_request_params: %{
+            dispense_valid_from: Date.utc_today() |> Date.add(-1),
+            dispense_valid_to: Date.utc_today() |> Date.add(1)
+          },
+          medication_dispense_params: %{
+            party_id: party.id,
+            payment_id: payment_id,
+            payment_amount: payment_amount
+          },
+          medication_dispense_details_params: %{
+            medication_id: medication.id,
+            medication: medication,
+            division_id: division_id,
+            medication_qty: 10,
+            sell_price: 18.65,
+            sell_amount: 186.5,
+            discount_amount: 50
+          }
+        })
+
+      expect(OPSMock, :get_medication_dispenses, fn _params, _headers ->
+        {:ok,
+         %{
+           "data" => [medication_dispense],
+           "paging" => %{
+             "page_number" => 1,
+             "page_size" => 50,
+             "total_entries" => 1,
+             "total_pages" => 1
+           }
+         }}
+      end)
+
+      resp =
+        conn
+        |> put_client_id_header(legal_entity.id)
+        |> patch(medication_dispense_path(conn, :process, UUID.generate()), %{
+          "payment_id" => payment_id
+        })
+        |> json_response(422)
+
+      assert %{
+               "invalid" => [
+                 %{
+                   "entry" => "$.payment_amount",
+                   "entry_type" => "json_data_property",
+                   "rules" => [
+                     %{
+                       "description" => "required property payment_amount was not present",
+                       "params" => [],
+                       "rule" => "required"
+                     }
+                   ]
+                 }
+               ]
+             } = resp["error"]
+    end
+
+    test "invalid params: payment_amount is less than 0", %{conn: conn} do
+      expect_mpi_get_person()
+
+      %{party: party} = insert(:prm, :party_user)
+      legal_entity = insert(:prm, :legal_entity)
+      %{id: employee_id} = insert(:prm, :employee, party: party, legal_entity: legal_entity)
+      %{id: division_id} = insert(:prm, :division, legal_entity: legal_entity)
+      %{id: innm_dosage_id} = insert_innm_dosage()
+      medication = insert_medication(innm_dosage_id)
+      %{id: medical_program_id} = insert(:prm, :medical_program)
+
+      insert(
+        :prm,
+        :program_medication,
+        medication_id: medication.id,
+        medical_program_id: medical_program_id,
+        reimbursement: build(:reimbursement, reimbursement_amount: 150)
+      )
+
+      payment_id = "12345"
+      payment_amount = 20
+
+      {_, medication_dispense} =
+        build_resp(%{
+          legal_entity_id: legal_entity.id,
+          division_id: division_id,
+          employee_id: employee_id,
+          medical_program_id: medical_program_id,
+          medication_id: innm_dosage_id,
+          medication_request_params: %{
+            dispense_valid_from: Date.utc_today() |> Date.add(-1),
+            dispense_valid_to: Date.utc_today() |> Date.add(1)
+          },
+          medication_dispense_params: %{
+            party_id: party.id,
+            payment_id: payment_id,
+            payment_amount: payment_amount
+          },
+          medication_dispense_details_params: %{
+            medication_id: medication.id,
+            medication: medication,
+            division_id: division_id,
+            medication_qty: 10,
+            sell_price: 18.65,
+            sell_amount: 186.5,
+            discount_amount: 50
+          }
+        })
+
+      expect(OPSMock, :get_medication_dispenses, fn _params, _headers ->
+        {:ok,
+         %{
+           "data" => [medication_dispense],
+           "paging" => %{
+             "page_number" => 1,
+             "page_size" => 50,
+             "total_entries" => 1,
+             "total_pages" => 1
+           }
+         }}
+      end)
+
+      resp =
+        conn
+        |> put_client_id_header(legal_entity.id)
+        |> patch(medication_dispense_path(conn, :process, UUID.generate()), %{
+          "payment_id" => payment_id,
+          "payment_amount" => -payment_amount
+        })
+        |> json_response(422)
+
+      assert %{
+               "invalid" => [
+                 %{
+                   "entry" => "$.payment_amount",
+                   "entry_type" => "json_data_property",
+                   "rules" => [
+                     %{
+                       "description" => "expected the value to be >= 0",
+                       "params" => %{"greater_than_or_equal_to" => 0},
+                       "rule" => "number"
+                     }
+                   ]
+                 }
+               ]
+             } = resp["error"]
     end
   end
 

@@ -6,18 +6,17 @@ defmodule Core.DeclarationRequests do
   import Ecto.Query
 
   alias Core.DeclarationRequests.API.Approve
-  alias Core.DeclarationRequests.API.Creator
   alias Core.DeclarationRequests.API.Documents
   alias Core.DeclarationRequests.API.ResendOTP
   alias Core.DeclarationRequests.API.Sign
+  alias Core.DeclarationRequests.API.V1.Creator
   alias Core.DeclarationRequests.DeclarationRequest
   alias Core.Divisions.Division
   alias Core.Email.Sanitizer
   alias Core.Employees.Employee
   alias Core.LegalEntities
   alias Core.LegalEntities.LegalEntity
-  alias Core.Persons.Validator, as: PersonsValidator
-  alias Core.Persons.V2.Validator, as: PersonsValidatorV2
+  alias Core.Persons.V1.Validator, as: PersonsValidator
   alias Core.Repo
   alias Core.Validators.Addresses
   alias Core.Validators.JsonSchema
@@ -25,10 +24,8 @@ defmodule Core.DeclarationRequests do
   alias Ecto.Multi
 
   @mithril_api Application.get_env(:core, :api_resolvers)[:mithril]
-
   @channel_cabinet DeclarationRequest.channel(:cabinet)
   @channel_mis DeclarationRequest.channel(:mis)
-
   @status_new DeclarationRequest.status(:new)
   @status_rejected DeclarationRequest.status(:rejected)
   @status_approved DeclarationRequest.status(:approved)
@@ -44,28 +41,9 @@ defmodule Core.DeclarationRequests do
     mpi_id
   )a
 
-  @person_create_params ~w(
-    addresses
-    authentication_methods
-    birth_country
-    birth_date
-    birth_settlement
-    confidant_person
-    documents
-    email
-    emergency_contact
-    first_name
-    gender
-    last_name
-    patient_signed
-    phones
-    preferred_way_communication
-    process_disclosure_data_consent
-    second_name
-    secret
-    tax_id
-    unzr
-  )
+  def changeset(%DeclarationRequest{} = declaration_request, params) do
+    cast(declaration_request, params, @fields_optional)
+  end
 
   def list(params) do
     DeclarationRequest
@@ -75,18 +53,6 @@ defmodule Core.DeclarationRequests do
     |> filter_by_status(params)
     |> Repo.paginate(params)
   end
-
-  defp filter_by_employee_id(query, %{"employee_id" => employee_id}) do
-    where(query, [r], fragment("?->'employee'->>'id' = ?", r.data, ^employee_id))
-  end
-
-  defp filter_by_employee_id(query, _), do: query
-
-  defp filter_by_status(query, %{"status" => status}) when is_binary(status) do
-    where(query, [r], r.status == ^status)
-  end
-
-  defp filter_by_status(query, _), do: where(query, [r], r.status in ^DeclarationRequest.status_options())
 
   def approve(id, verification_code, headers) do
     user_id = get_consumer_id(headers)
@@ -150,7 +116,69 @@ defmodule Core.DeclarationRequests do
     |> Documents.generate_links()
   end
 
-  defp validate_status_transition(changeset) do
+  def get_by_id!(id), do: get_by_id!(id, %{})
+  def get_by_id!(id, nil), do: get_by_id!(id, %{})
+
+  def get_by_id!(id, params) do
+    DeclarationRequest
+    |> where([dr], dr.id == ^id)
+    |> filter_by_legal_entity_id(params)
+    |> Repo.one!()
+  end
+
+  def create_offline(params, headers) do
+    user_id = get_consumer_id(headers)
+    client_id = get_client_id(headers)
+
+    with :ok <- JsonSchema.validate(:declaration_request, %{"declaration_request" => params}),
+         params <- lowercase_email(params),
+         :ok <- PersonsValidator.validate(params["person"]),
+         :ok <- Addresses.validate(get_in(params, ["person", "addresses"]), "RESIDENCE", headers),
+         {:ok, %Employee{} = employee} <-
+           Reference.validate(:employee, params["employee_id"], "$.declaration_request.employee_id"),
+         :ok <- Creator.validate_employee_status(employee),
+         :ok <- Creator.validate_employee_speciality(employee),
+         %LegalEntity{} = legal_entity <- LegalEntities.get_by_id(client_id),
+         {:ok, %Division{} = division} <-
+           Reference.validate(:division, params["division_id"], "$.declaration_request.division_id") do
+      data = Map.put(params, "channel", DeclarationRequest.channel(:mis))
+      Creator.create(data, user_id, params["person"], employee, division, legal_entity, headers)
+    end
+  end
+
+  def filter_by_legal_entity_id(query, %{"legal_entity_id" => legal_entity_id}) do
+    where(query, [r], fragment("?->'legal_entity'->>'id' = ?", r.data, ^legal_entity_id))
+  end
+
+  def filter_by_legal_entity_id(query, _), do: query
+
+  # Declaration Requests BOTH V1, V2
+
+  def validate_tax_id(user_tax_id, person_tax_id) do
+    if user_tax_id == person_tax_id do
+      :ok
+    else
+      {:error, {:"422", "Invalid person"}}
+    end
+  end
+
+  def check_user_person_id(user, person_id) do
+    if user["person_id"] == person_id do
+      :ok
+    else
+      {:error, :forbidden}
+    end
+  end
+
+  def lowercase_email(params) do
+    path = ~w(person email)
+    email = get_in(params, path)
+    put_in(params, path, Sanitizer.sanitize(email))
+  end
+
+  # Declaration Requests V1
+
+  def validate_status_transition(changeset) do
     from = changeset.data.status
     {_, to} = fetch_field(changeset, :status)
 
@@ -167,109 +195,25 @@ defmodule Core.DeclarationRequests do
     end
   end
 
-  def get_by_id!(id), do: get_by_id!(id, %{})
-  def get_by_id!(id, nil), do: get_by_id!(id, %{})
-
-  def get_by_id!(id, params) do
-    DeclarationRequest
-    |> where([dr], dr.id == ^id)
-    |> filter_by_legal_entity_id(params)
-    |> Repo.one!()
-  end
-
-  defp filter_by_legal_entity_id(query, %{"legal_entity_id" => legal_entity_id}) do
-    where(query, [r], fragment("?->'legal_entity'->>'id' = ?", r.data, ^legal_entity_id))
-  end
-
-  defp filter_by_legal_entity_id(query, _), do: query
-
-  def create_offline(params, headers, api_version \\ :v1) do
-    user_id = get_consumer_id(headers)
-    client_id = get_client_id(headers)
-
-    with :ok <- validate_schema(api_version, params),
-         params <- lowercase_email(params),
-         :ok <- validate_person(api_version, params["person"]),
-         :ok <- Addresses.validate(get_in(params, ["person", "addresses"]), "RESIDENCE", headers),
-         {:ok, %Employee{} = employee} <-
-           Reference.validate(:employee, params["employee_id"], "$.declaration_request.employee_id"),
-         :ok <- Creator.validate_employee_status(employee),
-         :ok <- Creator.validate_employee_speciality(employee),
-         %LegalEntity{} = legal_entity <- LegalEntities.get_by_id(client_id),
-         {:ok, %Division{} = division} <-
-           Reference.validate(:division, params["division_id"], "$.declaration_request.division_id") do
-      data = Map.put(params, "channel", DeclarationRequest.channel(:mis))
-      Creator.create(data, user_id, params["person"], employee, division, legal_entity, headers)
-    end
-  end
-
-  def create_online(params, headers) do
-    user_id = get_consumer_id(headers)
-    params = Map.delete(params, "legal_entity_id")
-
-    with :ok <- JsonSchema.validate(:cabinet_declaration_request, params),
-         params <- Map.put(params, "scope", "family_doctor"),
-         {:ok, %{"data" => user}} <- @mithril_api.get_user_by_id(user_id, headers),
-         :ok <- check_user_person_id(user, params["person_id"]),
-         {:ok, person} <- Reference.validate(:person, params["person_id"]),
-         :ok <- validate_person(:v2, person),
-         {:ok, %Employee{} = employee} <- Reference.validate(:employee, params["employee_id"]),
-         :ok <- Creator.validate_employee_status(employee),
-         :ok <- Creator.validate_employee_speciality(employee),
-         {:ok, %Division{} = division} <- Reference.validate(:division, params["division_id"]),
-         {:ok, %LegalEntity{} = legal_entity} <- Reference.validate(:legal_entity, division.legal_entity_id),
-         :ok <- validate_tax_id(user["tax_id"], person["tax_id"]) do
-      data =
-        params
-        |> Map.put("person", Map.take(person, @person_create_params))
-        |> Map.put("employee", employee)
-        |> Map.put("channel", DeclarationRequest.channel(:cabinet))
-
-      Creator.create(data, user_id, person, employee, division, legal_entity, headers)
-    end
-  end
-
-  defp validate_tax_id(user_tax_id, person_tax_id) do
-    if user_tax_id == person_tax_id do
-      :ok
-    else
-      {:error, {:"422", "Invalid person"}}
-    end
-  end
-
-  defp check_user_person_id(user, person_id) do
-    if user["person_id"] == person_id do
-      :ok
-    else
-      {:error, :forbidden}
-    end
-  end
-
-  def changeset(%DeclarationRequest{} = declaration_request, params) do
-    cast(declaration_request, params, @fields_optional)
-  end
-
-  defp lowercase_email(params) do
-    path = ~w(person email)
-    email = get_in(params, path)
-    put_in(params, path, Sanitizer.sanitize(email))
-  end
-
-  defp validate_channel(%DeclarationRequest{channel: @channel_mis}, @channel_cabinet) do
+  def validate_channel(%DeclarationRequest{channel: @channel_mis}, @channel_cabinet) do
     {:error, {:forbidden, "Declaration request should be approved by Doctor"}}
   end
 
-  defp validate_channel(%DeclarationRequest{channel: @channel_cabinet}, @channel_mis) do
+  def validate_channel(%DeclarationRequest{channel: @channel_cabinet}, @channel_mis) do
     {:error, {:forbidden, "Declaration request should be approved by Patient"}}
   end
 
-  defp validate_channel(_, _), do: :ok
+  def validate_channel(_, _), do: :ok
 
-  def validate_schema(:v1, params), do: JsonSchema.validate(:declaration_request, %{"declaration_request" => params})
+  def filter_by_employee_id(query, %{"employee_id" => employee_id}) do
+    where(query, [r], fragment("?->'employee'->>'id' = ?", r.data, ^employee_id))
+  end
 
-  def validate_schema(:v2, params), do: JsonSchema.validate(:declaration_request_v2, %{"declaration_request" => params})
+  def filter_by_employee_id(query, _), do: query
 
-  defp validate_person(:v1, person), do: PersonsValidator.validate(person)
+  def filter_by_status(query, %{"status" => status}) when is_binary(status) do
+    where(query, [r], r.status == ^status)
+  end
 
-  defp validate_person(:v2, person), do: PersonsValidatorV2.validate(person)
+  def filter_by_status(query, _), do: where(query, [r], r.status in ^DeclarationRequest.status_options())
 end

@@ -10,7 +10,7 @@ defmodule Core.Cabinet.API do
   alias Core.DeclarationRequests.API.Persons
   alias Core.Guardian
   alias Core.Man.Templates.EmailVerification
-  alias Core.Persons.Validator, as: PersonsValidator
+  alias Core.Persons.V2.Validator, as: PersonsValidator
   alias Core.ValidationError
   alias Core.Validators.Addresses
   alias Core.Validators.Error
@@ -35,6 +35,9 @@ defmodule Core.Cabinet.API do
            SignatureValidator.validate(params["signed_content"], params["signed_content_encoding"], headers),
          :ok <- verify_auth(content, changes, headers),
          :ok <- JsonSchema.validate(:person, content),
+         :ok <- PersonsValidator.validate_unzr(content),
+         :ok <- PersonsValidator.validate_national_id(content),
+         :ok <- PersonsValidator.validate_person_passports(content),
          :ok <- PersonsValidator.validate_birth_date(content["birth_date"], "$.birth_date"),
          :ok <- Addresses.validate(content["addresses"], "RESIDENCE", headers),
          {:ok, tax_id} <- validate_tax_id(content, signer),
@@ -104,10 +107,7 @@ defmodule Core.Cabinet.API do
 
   defp create_or_update_person([], params, headers), do: @mpi_api.create_or_update_person!(params, headers)
 
-  defp create_or_update_person(persons, _, _) when length(persons) > 1,
-    do: conflict("Person duplicated", :person_duplicated)
-
-  defp create_or_update_person(persons, params, headers), do: @mpi_api.update_person(hd(persons)["id"], params, headers)
+  defp create_or_update_person([person | _], params, headers), do: @mpi_api.update_person(person["id"], params, headers)
 
   defp prepare_user_params(tax_id, person_id, email, params, content) do
     [%{"phone_number" => phone_number}] = content["authentication_methods"]

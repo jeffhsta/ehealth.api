@@ -26,14 +26,14 @@ config :core,
     uaddresses: Core.API.UAddress,
     casher: Core.API.Casher,
     postmark: Core.API.Postmark,
-    declaration_request_creator: Core.DeclarationRequests.API.Creator
+    declaration_request_creator: Core.DeclarationRequests.API.V1.Creator
   ],
   cache: [
     validators: Core.Validators.Cache
   ]
 
 # Configures Legal Entities token permission
-config :core, Core.LegalEntities,
+config :core, Core.Context,
   tokens_types_personal: {:system, :list, "TOKENS_TYPES_PERSONAL", ["MSP", "PHARMACY"]},
   tokens_types_mis: {:system, :list, "TOKENS_TYPES_MIS", ["MIS"]},
   tokens_types_admin: {:system, :list, "TOKENS_TYPES_ADMIN", ["NHS"]},

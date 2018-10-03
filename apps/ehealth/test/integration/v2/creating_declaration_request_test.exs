@@ -14,13 +14,13 @@ defmodule EHealth.Integration.V2.DeclarationRequestCreateTest do
 
   setup :verify_on_exit!
 
-  def gen_sequence_number do
-    expect(DeclarationRequestsCreatorMock, :sql_get_sequence_number, fn ->
+  def gen_sequence_number(n \\ 1) do
+    expect(DeclarationRequestsCreatorMock, :sql_get_sequence_number, n, fn ->
       {:ok, %Postgrex.Result{rows: [[Enum.random(1_000_000..2_000_000)]]}}
     end)
   end
 
-  describe "Happy paths v1" do
+  describe "Happy paths v2" do
     setup %{conn: conn} do
       insert(:prm, :global_parameter, %{parameter: "adult_age", value: "18"})
       insert(:prm, :global_parameter, %{parameter: "declaration_term", value: "40"})
@@ -802,13 +802,12 @@ defmodule EHealth.Integration.V2.DeclarationRequestCreateTest do
       d1 = clone_declaration_request(decoded, "8799e3b6-34e7-4798-ba70-d897235d2b6d", "NEW")
       d2 = clone_declaration_request(decoded, "8799e3b6-34e7-4798-ba70-d897235d2b6d", "NEW")
 
-      conn =
+      resp =
         conn
         |> put_req_header("x-consumer-id", "ce377dea-d8c4-4dd8-9328-de24b1ee3879")
         |> put_req_header("x-consumer-metadata", Jason.encode!(%{client_id: "8799e3b6-34e7-4798-ba70-d897235d2b6d"}))
         |> post(v2_declaration_request_post_path(conn, :create), Jason.encode!(declaration_request_params))
-
-      resp = json_response(conn, 200)
+        |> json_response(200)
 
       id = resp["data"]["id"]
 
@@ -821,12 +820,6 @@ defmodule EHealth.Integration.V2.DeclarationRequestCreateTest do
       assert declaration_request.data["legal_entity"]["id"]
       assert declaration_request.data["division"]["id"]
       assert declaration_request.data["employee"]["id"]
-      # TODO: turn this into DB checks
-      #
-      # assert "NEW" = resp["status"]
-      # assert "ce377dea-d8c4-4dd8-9328-de24b1ee3879" = resp["data"]["updated_by"]
-      # assert "ce377dea-d8c4-4dd8-9328-de24b1ee3879" = resp["data"]["inserted_by"]
-      # assert %{"number" => "+380508887700", "type" => "OTP"} = resp["authentication_method_current"]
 
       assert "<html><body>Printout form for declaration request. tax_id = #{tax_id}</body></html>" ==
                resp["data"]["content"]
@@ -1067,11 +1060,14 @@ defmodule EHealth.Integration.V2.DeclarationRequestCreateTest do
             type: "NATIONAL_ID",
             number: "123456789",
             issued_at: "2014-02-12",
-            issued_by: "Збухівський РО ГО МЖД"
+            issued_by: "Збухівський РО ГО МЖД",
+            expiration_date: "2024-02-12"
           },
           %{
             type: "BIRTH_CERTIFICATE",
-            number: "1234567"
+            number: "1234567",
+            issued_at: "1996-12-25",
+            issued_by: "Збухівський РО ГО МЖД"
           }
         ])
 
@@ -1210,11 +1206,14 @@ defmodule EHealth.Integration.V2.DeclarationRequestCreateTest do
             type: "NATIONAL_ID",
             number: "123456789",
             issued_at: "2014-02-12",
-            issued_by: "Збухівський РО ГО МЖД"
+            issued_by: "Збухівський РО ГО МЖД",
+            expiration_date: "2024-02-12"
           },
           %{
             type: "BIRTH_CERTIFICATE",
-            number: "1234567"
+            number: "1234567",
+            issued_at: "1996-12-25",
+            issued_by: "Збухівський РО ГО МЖД"
           }
         ])
 
@@ -1241,11 +1240,14 @@ defmodule EHealth.Integration.V2.DeclarationRequestCreateTest do
             type: "NATIONAL_ID",
             number: "123456789",
             issued_at: "2014-02-12",
-            issued_by: "Збухівський РО ГО МЖД"
+            issued_by: "Збухівський РО ГО МЖД",
+            expiration_date: "2024-02-12"
           },
           %{
             type: "BIRTH_CERTIFICATE",
-            number: "1234567"
+            number: "1234567",
+            issued_at: "1996-12-25",
+            issued_by: "Збухівський РО ГО МЖД"
           }
         ])
 
@@ -1285,11 +1287,14 @@ defmodule EHealth.Integration.V2.DeclarationRequestCreateTest do
             type: "NATIONAL_ID",
             number: "123456789",
             issued_at: "2014-02-12",
-            issued_by: "Збухівський РО ГО МЖД"
+            issued_by: "Збухівський РО ГО МЖД",
+            expiration_date: "2024-02-12"
           },
           %{
             type: "BIRTH_CERTIFICATE",
-            number: "1234567"
+            number: "1234567",
+            issued_at: "1996-12-25",
+            issued_by: "Збухівський РО ГО МЖД"
           }
         ])
 

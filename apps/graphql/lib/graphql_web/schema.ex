@@ -10,8 +10,11 @@ defmodule GraphQLWeb.Schema do
 
   alias Core.LegalEntities.LegalEntity
   alias Core.Persons.Person
+  alias GraphQLWeb.Schema.LegalEntityTypes
+  alias GraphQLWeb.Schema.PersonTypes
 
-  import_types(GraphQLWeb.Schema.{LegalEntityTypes, PersonTypes})
+  import_types(LegalEntityTypes)
+  import_types(PersonTypes)
 
   query do
     import_fields(:legal_entity_queries)
@@ -20,14 +23,9 @@ defmodule GraphQLWeb.Schema do
 
   node interface do
     resolve_type(fn
-      %LegalEntity{}, _ ->
-        :legal_entity
-
-      %Person{}, _ ->
-        :person
-
-      _, _ ->
-        nil
+      %LegalEntity{}, _ -> :legal_entity
+      %Person{}, _ -> :person
+      _, _ -> nil
     end)
   end
 end

@@ -3,8 +3,10 @@ defmodule GraphQLWeb.AuthorizationMiddlewareTest do
 
   @query """
     {
-      legalEntities {
-        id
+      legalEntities(first: 10) {
+        nodes {
+          id
+        }
       }
     }
   """
@@ -13,7 +15,7 @@ defmodule GraphQLWeb.AuthorizationMiddlewareTest do
     test "success with given scope which includes requested scope", %{conn: conn} do
       resp_body =
         conn
-        |> put_scope("legal_entity:list")
+        |> put_scope("legal_entity:read")
         |> post_query(@query)
         |> json_response(200)
 
@@ -27,7 +29,7 @@ defmodule GraphQLWeb.AuthorizationMiddlewareTest do
     test "fail with given scope which does not include requested scope", %{conn: conn} do
       resp_body =
         conn
-        |> put_scope("person:list")
+        |> put_scope("person:read")
         |> post_query(@query)
         |> json_response(200)
 

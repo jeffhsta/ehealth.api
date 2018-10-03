@@ -20,7 +20,11 @@ defmodule GraphQLWeb.Middleware.MapGet do
   end
 
   def call(%{source: source} = resolution, key) do
-    value = Map.get(source, key) || Map.get(source, to_string(key))
+    value =
+      case Map.has_key?(source, key) do
+        true -> Map.get(source, key)
+        false -> Map.get(source, to_string(key))
+      end
 
     Resolution.put_result(resolution, {:ok, value})
   end

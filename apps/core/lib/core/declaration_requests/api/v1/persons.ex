@@ -1,5 +1,6 @@
 defmodule Core.DeclarationRequests.API.Persons do
   @moduledoc false
+
   @person_active "active"
 
   def get_search_params(person_data) do
@@ -45,6 +46,19 @@ defmodule Core.DeclarationRequests.API.Persons do
     case document do
       %{"number" => number} -> number
       _ -> nil
+    end
+  end
+
+  def get_declaration_create_search_params(person_data) do
+    child_search_params = ["birth_date", "birth_certificate"]
+    search_params = get_search_params(person_data)
+    search_keys = Map.keys(search_params)
+
+    child_search_params
+    |> Enum.all?(&Kernel.in(&1, search_keys))
+    |> case do
+      true -> {:error, :ignore}
+      _ -> {:ok, search_params}
     end
   end
 end

@@ -20,6 +20,7 @@ defmodule GraphQL.Mixfile do
       compilers: [:phoenix] ++ Mix.compilers(),
       start_permanent: Mix.env() == :prod,
       deps: deps(),
+      aliases: aliases(),
       preferred_cli_env: [coveralls: :test],
       test_coverage: [tool: ExCoveralls]
     ]
@@ -54,5 +55,15 @@ defmodule GraphQL.Mixfile do
       {:plug_logger_json, "~> 0.5"},
       {:phoenix, "~> 1.3.4"}
     ]
+  end
+
+  defp aliases do
+    [
+      "ecto.setup": &ecto_setup/1
+    ]
+  end
+
+  defp ecto_setup(_) do
+    Mix.shell().cmd("cd ../core && mix ecto.setup")
   end
 end

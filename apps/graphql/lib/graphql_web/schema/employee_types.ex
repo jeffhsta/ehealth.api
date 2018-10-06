@@ -13,12 +13,6 @@ defmodule GraphQLWeb.Schema.EmployeeTypes do
 
     # enums
     field(:status, non_null(:employee_status))
-
-    # connections
-    #    field(:party, non_null(:employee_status))
-    #    field(:division, non_null(:employee_status))
-    #    field(:legal_entity, non_null(:employee_status))
-    #    field(:doctor, non_null(:employee_status))
   end
 
   # enum

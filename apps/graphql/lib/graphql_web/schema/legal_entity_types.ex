@@ -6,8 +6,6 @@ defmodule GraphQLWeb.Schema.LegalEntityTypes do
 
   alias GraphQLWeb.Resolvers.LegalEntity
 
-  #  import_types(GraphQLWeb.Schema.EmployeeTypes)
-
   object :legal_entity_queries do
     @desc "get list of Legal Entities"
     connection field(:legal_entities, node_type: :legal_entity) do
@@ -60,11 +58,6 @@ defmodule GraphQLWeb.Schema.LegalEntityTypes do
     field(:addresses, non_null(list_of(:address)))
     field(:archive, non_null(list_of(:legal_entity_archive)))
     field(:medical_service_provider, non_null(:msp))
-
-    # connections
-    #    field(:owner, non_null(:employee))
-    #    field(:employees, list_of(:employee))
-    #    field(:mergedFromLegalEntities, [:mergedFromLegalEntities])
 
     # dates
     field(:inserted_at, :string)

@@ -1,8 +1,6 @@
 defmodule GraphQLWeb.Resolvers.Person do
   @moduledoc false
 
-  alias GraphQL.Person
-
   # ToDo: get real persons
   @persons %{
     "1" => %{id: 1, first_name: "John", last_name: "Doe"},

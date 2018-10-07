@@ -25,6 +25,8 @@ defmodule GraphQLWeb.ConnCase do
       # Import conveniences for testing with connections
       use Phoenix.ConnTest
 
+      import Core.Factories
+
       # The default endpoint for testing
       @endpoint GraphQLWeb.Endpoint
 

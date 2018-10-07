@@ -1,17 +1,22 @@
 defmodule GraphQLWeb.Resolvers.Person do
   @moduledoc false
 
-  # ToDo: get real persons
-  @persons %{
-    "1" => %{id: 1, first_name: "John", last_name: "Doe"},
-    "2" => %{id: 2, first_name: "Jane", last_name: "Roe"}
-  }
+  import Core.Utils.TypesConverter, only: [strings_to_keys: 1]
+
+  alias Core.Persons
 
   def list_persons(_parent, _args, _resolution) do
-    {:ok, Map.values(@persons)}
+    {:ok, []}
   end
 
-  def get_person_by(_parent, args, _resolution) do
-    {:ok, Map.get(@persons, args.id)}
+  def get_person_by_id(_parent, %{id: id}, %{context: %{headers: headers}}) do
+    case Persons.get_by_id(id, headers) do
+      {:ok, person} ->
+        {:ok, strings_to_keys(person)}
+
+      # TODO: return better error message
+      _ ->
+        {:error, "Failed to get Person with ID #{id}"}
+    end
   end
 end

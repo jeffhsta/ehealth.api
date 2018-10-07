@@ -81,6 +81,12 @@ defmodule Core.Persons do
     end
   end
 
+  def get_by_id(id, headers) do
+    with {:ok, %{"data" => person}} <- @mpi_api.person(id, headers) do
+      {:ok, person}
+    end
+  end
+
   defp check_user_person_id(user, id) do
     if user["person_id"] == id do
       :ok

@@ -42,8 +42,6 @@ defmodule Core.DeclarationRequests.API.V1.Creator do
   @status_new DeclarationRequest.status(:new)
   @status_approved DeclarationRequest.status(:approved)
 
-  @years_to_have_passport 14
-
   @pediatrician "PEDIATRICIAN"
   @therapist "THERAPIST"
   @family_doctor "FAMILY_DOCTOR"
@@ -65,7 +63,7 @@ defmodule Core.DeclarationRequests.API.V1.Creator do
     pending_declaration_requests = pending_declaration_requests(person, employee.id, legal_entity.id)
 
     Repo.transaction(fn ->
-      cancell_declaration_requests(user_id, pending_declaration_requests)
+      cancel_declaration_requests(user_id, pending_declaration_requests)
 
       with {:ok, declaration_request} <- insert_declaration_request(params, user_id, auxiliary_entities, headers),
            {:ok, declaration_request} <- finalize(declaration_request),
@@ -77,7 +75,7 @@ defmodule Core.DeclarationRequests.API.V1.Creator do
     end)
   end
 
-  def cancell_declaration_requests(user_id, pending_declaration_requests) do
+  def cancel_declaration_requests(user_id, pending_declaration_requests) do
     previous_request_ids =
       pending_declaration_requests
       |> Repo.all()
@@ -657,12 +655,9 @@ defmodule Core.DeclarationRequests.API.V1.Creator do
   def determine_auth_method_for_mpi(%Changeset{valid?: false} = changeset, _, _), do: changeset
 
   def determine_auth_method_for_mpi(changeset, @channel_cabinet, person_id) do
-    chanseset_data = get_field(changeset, :data)
-    birth_date = chanseset_data["person"]["birth_date"]
-
     changeset
     |> put_change(:authentication_method_current, %{"type" => @auth_na})
-    |> put_mpi_id(person_id, birth_date)
+    |> put_change(:mpi_id, person_id)
   end
 
   def determine_auth_method_for_mpi(changeset, _, _) do
@@ -696,26 +691,11 @@ defmodule Core.DeclarationRequests.API.V1.Creator do
 
     changeset
     |> put_change(:authentication_method_current, authentication_method_current)
-    |> put_mpi_id(person["id"], person["birth_date"])
+    |> put_change(:mpi_id, person["id"])
   end
 
   def do_determine_auth_method_for_mpi({:error, reason}, changeset),
     do: add_error(changeset, :authentication_method_current, format_error_response("MPI", reason))
-
-  defp put_mpi_id(changeset, person_id, person_birth_date) do
-    if passport_age?(person_birth_date) do
-      put_change(changeset, :mpi_id, person_id)
-    else
-      changeset
-    end
-  end
-
-  defp passport_age?(birth_date) do
-    case Date.from_iso8601(birth_date) do
-      {:ok, birth_date} -> Timex.diff(Timex.now(), birth_date, :years) >= @years_to_have_passport
-      _ -> false
-    end
-  end
 
   def generate_printout_form(%Changeset{valid?: false} = changeset, _), do: changeset
 

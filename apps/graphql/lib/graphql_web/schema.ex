@@ -10,11 +10,13 @@ defmodule GraphQLWeb.Schema do
 
   alias Core.LegalEntities.LegalEntity
   alias Core.Persons.Person
-  alias GraphQLWeb.Schema.LegalEntityTypes
-  alias GraphQLWeb.Schema.PersonTypes
 
-  import_types(LegalEntityTypes)
-  import_types(PersonTypes)
+  import_types(GraphQLWeb.Schema.{
+    AddressTypes,
+    LegalEntityTypes,
+    PersonTypes,
+    PhoneTypes
+  })
 
   query do
     import_fields(:legal_entity_queries)

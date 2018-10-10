@@ -8,8 +8,10 @@ defmodule GraphQLWeb.Schema.PersonTypes do
 
   object :person_queries do
     @desc "Get all persons"
-    field :persons, list_of(:person) do
+    connection field(:persons, node_type: :person) do
       meta(:scope, ~w(person:list))
+      arg(:filter, :person_filter)
+      arg(:orderBy, :person_order_by)
       resolve(&Person.list_persons/3)
     end
 
@@ -19,6 +21,43 @@ defmodule GraphQLWeb.Schema.PersonTypes do
       meta(:scope, ~w(person:read))
       resolve(&Person.get_person_by_id/3)
     end
+  end
+
+  input_object(:person_filter) do
+    field(:tax_id, :string)
+    field(:unzr, :string)
+    field(:phone_number, :string)
+    field(:personal, :person_personal_filter)
+  end
+
+  input_object :person_personal_filter do
+    field(:first_name, non_null(:string))
+    field(:last_name, non_null(:string))
+    # TODO: this field should be :date scalar type
+    field(:birth_date, non_null(:string))
+  end
+
+  enum :person_order_by do
+    value(:birth_date_asc)
+    value(:birth_date_desc)
+    value(:inserted_at_asc)
+    value(:inserted_at_desc)
+    value(:tax_id_asc)
+    value(:tax_id_desc)
+    value(:unzr_asc)
+    value(:unzr_desc)
+  end
+
+  connection node_type: :person do
+    field :nodes, list_of(:person) do
+      resolve(fn
+        _, %{source: conn} ->
+          nodes = conn.edges |> Enum.map(& &1.node)
+          {:ok, nodes}
+      end)
+    end
+
+    edge(do: nil)
   end
 
   node object(:person) do
@@ -33,8 +72,7 @@ defmodule GraphQLWeb.Schema.PersonTypes do
     field(:birth_country, non_null(:string))
     field(:birth_settlement, non_null(:string))
     field(:tax_id, :string)
-    # TODO: Uncomment this when branch will be up to date with develop
-    # field(:no_tax_id, not_null(:boolean))
+    field(:no_tax_id, non_null(:boolean))
     field(:unzr, :string)
     field(:preferred_way_communication, :person_preferred_way_communication)
     # TODO: this field should be :date_time scalar type

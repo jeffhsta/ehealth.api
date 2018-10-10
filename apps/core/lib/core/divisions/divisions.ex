@@ -54,9 +54,12 @@ defmodule Core.Divisions do
   @default_mountain_group "0"
 
   def list(params) do
-    %Search{}
-    |> changeset(params)
-    |> search(params, Division)
+    page =
+      %Search{}
+      |> changeset(params)
+      |> search(params, Division)
+
+    %{page | entities: preload_address(page.entities)}
   end
 
   def get_by_id!(id) do
@@ -309,5 +312,9 @@ defmodule Core.Divisions do
   defp lowercase_email(params) do
     email = Map.get(params, "email")
     Map.put(params, email, Sanitizer.sanitize(email))
+  end
+
+  defp preload_address(divisions) do
+    PRMRepo.preload(divisions, :addresses)
   end
 end

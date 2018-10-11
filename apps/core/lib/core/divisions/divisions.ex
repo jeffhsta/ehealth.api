@@ -59,7 +59,7 @@ defmodule Core.Divisions do
       |> changeset(params)
       |> search(params, Division)
 
-    %{page | entities: preload_address(page.entities)}
+    %{page | entries: preload_address(page.entries)}
   end
 
   def get_by_id!(id) do
